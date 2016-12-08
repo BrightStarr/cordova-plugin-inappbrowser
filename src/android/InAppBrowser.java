@@ -87,8 +87,8 @@ public class InAppBrowser extends CordovaPlugin {
     private static final String HARDWARE_BACK_BUTTON = "hardwareback";
     private static final String MEDIA_PLAYBACK_REQUIRES_USER_ACTION = "mediaPlaybackRequiresUserAction";
     private static final String SHOULD_PAUSE = "shouldPauseOnSuspend";
+    private static final String ACCEPT_THIRD_PARTY_COOKIES = "acceptThirdPartyCookies";
     private static final Boolean DEFAULT_HARDWARE_BACK = true;
-    private static final String USER_WIDE_VIEW_PORT = "useWideViewPort";
 
     private InAppBrowserDialog dialog;
     private WebView inAppWebView;
@@ -102,7 +102,7 @@ public class InAppBrowser extends CordovaPlugin {
     private boolean hadwareBackButton = true;
     private boolean mediaPlaybackRequiresUserGesture = false;
     private boolean shouldPauseInAppBrowser = false;
-    private boolean useWideViewPort = true;
+    private boolean acceptThirdPartyCookies = false;
 
     /**
      * Executes the request and returns PluginResult.
@@ -325,33 +325,29 @@ public class InAppBrowser extends CordovaPlugin {
      *                    which should be executed directly.
      */
     private void injectDeferredObject(String source, String jsWrapper) {
-        if (inAppWebView!=null) {
-            String scriptToInject;
-            if (jsWrapper != null) {
-                org.json.JSONArray jsonEsc = new org.json.JSONArray();
-                jsonEsc.put(source);
-                String jsonRepr = jsonEsc.toString();
-                String jsonSourceString = jsonRepr.substring(1, jsonRepr.length()-1);
-                scriptToInject = String.format(jsWrapper, jsonSourceString);
-            } else {
-                scriptToInject = source;
-            }
-            final String finalScriptToInject = scriptToInject;
-            this.cordova.getActivity().runOnUiThread(new Runnable() {
-                @SuppressLint("NewApi")
-                @Override
-                public void run() {
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
-                        // This action will have the side-effect of blurring the currently focused element
-                        inAppWebView.loadUrl("javascript:" + finalScriptToInject);
-                    } else {
-                        inAppWebView.evaluateJavascript(finalScriptToInject, null);
-                    }
-                }
-            });
+        String scriptToInject;
+        if (jsWrapper != null) {
+            org.json.JSONArray jsonEsc = new org.json.JSONArray();
+            jsonEsc.put(source);
+            String jsonRepr = jsonEsc.toString();
+            String jsonSourceString = jsonRepr.substring(1, jsonRepr.length()-1);
+            scriptToInject = String.format(jsWrapper, jsonSourceString);
         } else {
-            LOG.d(LOG_TAG, "Can't inject code into the system browser");
+            scriptToInject = source;
         }
+        final String finalScriptToInject = scriptToInject;
+        this.cordova.getActivity().runOnUiThread(new Runnable() {
+            @SuppressLint("NewApi")
+            @Override
+            public void run() {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+                    // This action will have the side-effect of blurring the currently focused element
+                    inAppWebView.loadUrl("javascript:" + finalScriptToInject);
+                } else {
+                    inAppWebView.evaluateJavascript(finalScriptToInject, null);
+                }
+            }
+        });
     }
 
     /**
@@ -560,9 +556,9 @@ public class InAppBrowser extends CordovaPlugin {
             if (shouldPause != null) {
                 shouldPauseInAppBrowser = shouldPause.booleanValue();
             }
-            Boolean wideViewPort = features.get(USER_WIDE_VIEW_PORT);
-            if (wideViewPort != null ) {
-		            useWideViewPort = wideViewPort.booleanValue();
+            Boolean thirdPartyCookies = features.get(ACCEPT_THIRD_PARTY_COOKIES);
+            if (thirdPartyCookies != null) {
+                acceptThirdPartyCookies = thirdPartyCookies.booleanValue();
             }
         }
 
@@ -760,11 +756,18 @@ public class InAppBrowser extends CordovaPlugin {
                 } else if (clearSessionCache) {
                     CookieManager.getInstance().removeSessionCookie();
                 }
-
+                
+                // Enable Thirdparty Cookies on >=Android 5.0 device
+                if (acceptThirdPartyCookies) {
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                        CookieManager.getInstance().setAcceptThirdPartyCookies(inAppWebView,true);
+                    }
+                }
+                
                 inAppWebView.loadUrl(url);
                 inAppWebView.setId(Integer.valueOf(6));
                 inAppWebView.getSettings().setLoadWithOverviewMode(true);
-                inAppWebView.getSettings().setUseWideViewPort(useWideViewPort);
+                inAppWebView.getSettings().setUseWideViewPort(true);
                 inAppWebView.requestFocus();
                 inAppWebView.requestFocusFromTouch();
 
