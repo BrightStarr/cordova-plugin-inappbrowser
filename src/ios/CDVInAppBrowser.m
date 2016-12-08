@@ -398,6 +398,7 @@
 - (BOOL)webView:(UIWebView*)theWebView shouldStartLoadWithRequest:(NSURLRequest*)request navigationType:(UIWebViewNavigationType)navigationType
 {
     NSURL* url = request.URL;
+    NSLog(@"UNILYDEBUG: Setting the WebView's frame to %@", url);
     BOOL isTopLevelNavigation = [request.URL isEqual:[request mainDocumentURL]];
 
     // See if the url uses the 'gap-iab' protocol. If so, the host should be the id of a callback to execute,
@@ -451,6 +452,11 @@
 - (void)webViewDidFinishLoad:(UIWebView*)theWebView
 {
     if (self.callbackId != nil) {
+        NSLog(@"UNILYDEBUG: webViewDidFinishLoad callback not nill");
+    } else {
+        NSLog(@"UNILYDEBUG: webViewDidFinishLoad callback IS nill");
+    }
+    if (self.callbackId != nil) {
         // TODO: It would be more useful to return the URL the page is actually on (e.g. if it's been redirected).
         NSString* url = [self.inAppBrowserViewController.currentURL absoluteString];
         CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK
@@ -463,6 +469,7 @@
 
 - (void)webView:(UIWebView*)theWebView didFailLoadWithError:(NSError*)error
 {
+    NSLog(@"UNILYDEBUG: didFailLoadWithError %@", error.localizedDescription);
     if (self.callbackId != nil) {
         NSString* url = [self.inAppBrowserViewController.currentURL absoluteString];
         CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
@@ -874,7 +881,7 @@
 - (void)webViewDidStartLoad:(UIWebView*)theWebView
 {
     // loading url, start spinner, update back/forward
-
+    NSLog(@"UNILYDEBUG: webViewDidStartLoad so will start spinner");
     self.addressLabel.text = NSLocalizedString(@"Loading...", nil);
     self.backButton.enabled = theWebView.canGoBack;
     self.forwardButton.enabled = theWebView.canGoForward;
@@ -891,7 +898,15 @@
     if (isTopLevelNavigation) {
         self.currentURL = request.URL;
     }
-    return [self.navigationDelegate webView:theWebView shouldStartLoadWithRequest:request navigationType:navigationType];
+    
+    BOOL shouldNav = [self.navigationDelegate webView:theWebView shouldStartLoadWithRequest:request navigationType:navigationType];
+
+    if (shouldNav) {
+        NSLog(@"UNILYDEBUG: shouldStartLoadWithRequest so decided that we SHOULD");
+    } else {
+        NSLog(@"UNILYDEBUG: shouldStartLoadWithRequest so decided that we shouldnt");
+    }
+
 }
 
 - (void)webViewDidFinishLoad:(UIWebView*)theWebView
@@ -926,7 +941,7 @@
 - (void)webView:(UIWebView*)theWebView didFailLoadWithError:(NSError*)error
 {
     // log fail message, stop spinner, update back/forward
-    NSLog(@"webView:didFailLoadWithError - %ld: %@", (long)error.code, [error localizedDescription]);
+    NSLog(@"UNILYDEBUG:webView:didFailLoadWithError - %ld: %@", (long)error.code, [error localizedDescription]);
 
     self.backButton.enabled = theWebView.canGoBack;
     self.forwardButton.enabled = theWebView.canGoForward;
